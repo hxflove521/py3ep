@@ -1,13 +1,14 @@
 from datetime import datetime, timedelta, timezone
-from typing import Union, Annotated
+from typing import Annotated
 
 import jwt 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
+import time
 
 SECRET_KEY = "5a06dda83ee9705e9ab25c99b50305ae1d117e124663f2605af2cfa9f4038c33"
 ALGORITHM = "HS256"
@@ -43,6 +44,16 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 app = FastAPI()
+
+# 中间件，此例用来计算请求耗时
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    response.headers["X-Process-Time"] = str(process_time)
+    return response
+
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
